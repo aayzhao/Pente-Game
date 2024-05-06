@@ -185,6 +185,11 @@ public class ModelImpl implements Model {
     }
 
     @Override
+    public Board getBoard() {
+        return this.board.copy();
+    }
+
+    @Override
     public PieceType getWinner() {
         PieceType winner = null;
 

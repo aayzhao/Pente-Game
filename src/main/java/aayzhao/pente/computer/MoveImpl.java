@@ -21,8 +21,8 @@ public class MoveImpl implements Move{
     @Override
     public String getAlphaNumericCoord() {
         StringBuilder sb = new StringBuilder();
-        sb.append('a' + pair[0]);
-        sb.append('1' + pair[1]);
+        sb.append((char) ('a' + pair[0]));
+        sb.append((char) ('1' + pair[1]));
         return sb.toString();
     }
 

@@ -1,6 +1,7 @@
 package aayzhao.pente.computer;
 
 import aayzhao.pente.game.model.Board;
+import aayzhao.pente.game.model.BoardImpl;
 import aayzhao.pente.game.model.ModelImpl;
 import aayzhao.pente.game.model.PieceType;
 
@@ -9,11 +10,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 
-public class MCTSComputer implements PenteComputer  {
+public class FullRolloutMCTSComputer implements PenteComputer  {
     private static final Random random = new Random();
     @Override
-    public int advantage(int halfPly, Board board, int whiteCaptures, int blackCaptures) {
-        return 0;
+    public double advantage(int halfPly, Board board, int whiteCaptures, int blackCaptures) {
+        return 0.0;
     }
 
 
@@ -26,7 +27,7 @@ public class MCTSComputer implements PenteComputer  {
                 if (board.getIntersection(i, j) == PieceType.EMPTY) {
                     movesToSearch.add(
                             new RandomGame(
-                                    halfPly + 1,
+                                    halfPly,
                                     board,
                                     whiteCaptures,
                                     blackCaptures,
@@ -49,13 +50,18 @@ public class MCTSComputer implements PenteComputer  {
         }
 
         int idx = 0;
+        int score = movesToSearch.get(idx).score;
         int multiplier = halfPly % 2 == 1 ? 1 : -1;
         for (int i = 1; i < movesToSearch.size(); i++) {
-            if (movesToSearch.get(i).score * multiplier > movesToSearch.get(idx).score) {
+            if (movesToSearch.get(i).score * multiplier > movesToSearch.get(idx).score * multiplier) {
                 idx = i;
+                score = movesToSearch.get(i).score;
+                // System.out.println(movesToSearch.get(i).score);
             }
         }
 
+        Move best = movesToSearch.get(idx).getMove();
+        System.out.printf("Best Move for %s: %s\nScore: %.2f\n", halfPly % 2 == 1 ? "white" : "black", best.toString(), ((double) score) / 150);
         return movesToSearch.get(idx).getMove();
     }
 
@@ -74,10 +80,10 @@ public class MCTSComputer implements PenteComputer  {
             super.move(move.getRowCoord(), move.getColumnCoord());
             PieceType won = super.getWinner();
             if (won != null) {
-                score = halfPly % 2 == 1 ? 10000 : -10000;
+                score = halfPly % 2 == 1 ? 15000 : -15000;
             } else {
                 startBoard = super.board.copy();
-                originalHalfPly = halfPly;
+                originalHalfPly = halfPly + 1;
                 originalBlackCaptures = blackCaptures;
                 originalWhiteCaptures = whiteCaptures;
 
@@ -110,7 +116,7 @@ public class MCTSComputer implements PenteComputer  {
         public void run() {
             if (score != null) return;
             int tempScore = 0;
-            for (int i = 0; i < 10000; i++) {
+            for (int i = 0; i < 15000; i++) {
                 PieceType winner = null;
                 while (winner == null && set.index > 0) {
                     Move nextMove = this.set.getRandom();
@@ -161,5 +167,17 @@ public class MCTSComputer implements PenteComputer  {
             remove(target);
             return target;
         }
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        System.out.println("Testing");
+        PenteComputer cpu = new FullRolloutMCTSComputer();
+        Board board = new BoardImpl(9);
+        board.placePiece(PieceType.WHITE, 0, 0);
+        board.placePiece(PieceType.WHITE, 0, 1);
+        board.placePiece(PieceType.WHITE, 0, 2);
+        board.placePiece(PieceType.WHITE, 0, 3);
+
+        System.out.println(cpu.bestMove(2, board, 0, 0));
     }
 }

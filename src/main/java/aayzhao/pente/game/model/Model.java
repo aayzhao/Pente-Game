@@ -61,6 +61,12 @@ public interface Model {
     void clearBoard();
 
     /**
+     * Returns a copy of the current game board
+     * @return copy of board
+     */
+    Board getBoard();
+
+    /**
      *
      * @return
      */

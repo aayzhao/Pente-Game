@@ -11,10 +11,13 @@ public class CLIView implements ModelObserver {
     }
     @Override
     public void update(Model model) {
+        System.out.printf("White Captures: %d\tBlack Captures: %d\n", model.getWhitePlayerCaptures(), model.getBlackPlayerCaptures());
+        String playerMove = model.getHalfPly() % 2 == 1 ? "White to move: " : "Black to move: ";
+        System.out.println(playerMove);
         for (int i = model.getBoardSize() - 1; i >= 0; i--) {
             System.out.printf("%c ", 'a' + i);
             for (int j = 0; j < model.getBoardSize(); j++) {
-                String ch = PieceType.pieceToInt(model.getIntersection(i, j)) == 0 ? ".  " : (PieceType.pieceToInt(model.getIntersection(i, j)) == 1 ? "O  " : "0  ");
+                String ch = PieceType.pieceToInt(model.getIntersection(i, j)) == 0 ? ".  " : (PieceType.pieceToInt(model.getIntersection(i, j)) == 1 ? "O  " : "X  ");
                 System.out.print(ch);
             }
             System.out.println();
@@ -23,9 +26,9 @@ public class CLIView implements ModelObserver {
         for (int i = 1; i < 10; i++) {
             System.out.printf("%d  ", i);
         }
-        for (int i = 10; i < 20; i++) {
-            System.out.printf("%d ", i);
-        }
+//        for (int i = 10; i < 20; i++) {
+//            System.out.printf("%d ", i);
+//        }
         System.out.println("\n");
     }
 }
