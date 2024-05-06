@@ -80,7 +80,7 @@ public class ModelImpl implements Model {
         }
     }
 
-    private void checkCapture(int r, int c) {
+    protected void checkCapture(int r, int c) {
         boolean left = c > 2;
         boolean right = c < this.getBoardSize() - 3;
         boolean down = r > 2;

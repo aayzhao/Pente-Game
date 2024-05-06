@@ -61,7 +61,7 @@ public class FullRolloutMCTSComputer implements PenteComputer  {
         }
 
         Move best = movesToSearch.get(idx).getMove();
-        System.out.printf("Best Move for %s: %s\nScore: %.2f\n", halfPly % 2 == 1 ? "white" : "black", best.toString(), ((double) score) / 150);
+        System.out.printf("Best Move for %s: %s\nScore: %.2f\n", halfPly % 2 == 1 ? "white" : "black", best.toString(), ((double) score) / 125);
         return movesToSearch.get(idx).getMove();
     }
 
@@ -77,10 +77,11 @@ public class FullRolloutMCTSComputer implements PenteComputer  {
         public RandomGame(int halfPly, Board board, int whiteCaptures, int blackCaptures, Move move) {
             super(board.copy(), whiteCaptures, blackCaptures, halfPly);
             this.move = move;
+            this.set = new RandomizedMoveSet(17, random);
             super.move(move.getRowCoord(), move.getColumnCoord());
             PieceType won = super.getWinner();
             if (won != null) {
-                score = halfPly % 2 == 1 ? 15000 : -15000;
+                score = halfPly % 2 == 1 ? 12500 : -12500;
             } else {
                 startBoard = super.board.copy();
                 originalHalfPly = halfPly + 1;
@@ -113,10 +114,113 @@ public class FullRolloutMCTSComputer implements PenteComputer  {
         }
 
         @Override
+        protected void checkCapture(int r, int c) {
+            boolean left = c > 2;
+            boolean right = c < this.getBoardSize() - 3;
+            boolean down = r > 2;
+            boolean up = r < this.getBoardSize() - 3;
+            int captures = 0;
+            PieceType cur = halfPly % 2 == 1 ? PieceType.WHITE : PieceType.BLACK;
+            PieceType opp = PieceType.opponentType(cur);
+            if (down) {
+                if (board.getIntersection(r - 3, c) == cur
+                        && board.getIntersection(r - 2, c) == opp
+                        && board.getIntersection(r - 1, c) == opp) {
+                    board.removePiece(r - 2, c);
+                    board.removePiece(r - 1, c);
+                    set.insert(new MoveImpl(r - 2, c));
+                    set.insert(new MoveImpl(r - 1, c));
+                    captures++;
+                }
+                if (left) {
+                    if (board.getIntersection(r - 3, c - 3) == cur
+                            && board.getIntersection(r - 2, c - 2) == opp
+                            && board.getIntersection(r - 1, c - 1) == opp) {
+                        board.removePiece(r - 2, c - 2);
+                        board.removePiece(r - 1, c - 1);
+                        set.insert(new MoveImpl(r - 2, c - 2));
+                        set.insert(new MoveImpl(r - 1, c - 1));
+                        captures++;
+                    }
+
+                }
+                if (right) {
+                    if (board.getIntersection(r - 3, c + 3) == cur
+                            && board.getIntersection(r - 2, c + 2) == opp
+                            && board.getIntersection(r - 1, c + 1) == opp) {
+                        board.removePiece(r - 2, c + 2);
+                        board.removePiece(r - 1, c + 1);
+                        set.insert(new MoveImpl(r - 2, c + 2));
+                        set.insert(new MoveImpl(r - 1, c + 1));
+                        captures++;
+                    }
+
+                }
+            }
+            if (up) {
+                if (board.getIntersection(r + 3, c) == cur
+                        && board.getIntersection(r + 2, c) == opp
+                        && board.getIntersection(r + 1, c) == opp) {
+                    board.removePiece(r + 2, c);
+                    board.removePiece(r + 1, c);
+                    set.insert(new MoveImpl(r + 2, c));
+                    set.insert(new MoveImpl(r + 1, c));
+                    captures++;
+                }
+                if (left) {
+                    if (board.getIntersection(r + 3, c - 3) == cur
+                            && board.getIntersection(r + 2, c - 2) == opp
+                            && board.getIntersection(r + 1, c - 1) == opp) {
+                        board.removePiece(r + 2, c - 2);
+                        board.removePiece(r + 1, c - 1);
+                        set.insert(new MoveImpl(r + 2, c - 2));
+                        set.insert(new MoveImpl(r + 1, c - 1));
+                        captures++;
+                    }
+                }
+                if (right) {
+                    if (board.getIntersection(r + 3, c + 3) == cur
+                            && board.getIntersection(r + 2, c + 2) == opp
+                            && board.getIntersection(r + 1, c + 1) == opp) {
+                        board.removePiece(r + 2, c + 2);
+                        board.removePiece(r + 1, c + 1);
+                        set.insert(new MoveImpl(r + 2, c + 2));
+                        set.insert(new MoveImpl(r + 1, c + 1));
+                        captures++;
+                    }
+                }
+            }
+            if (left) {
+                if (board.getIntersection(r, c - 3) == cur
+                        && board.getIntersection(r, c - 2) == opp
+                        && board.getIntersection(r, c - 1) == opp) {
+                    board.removePiece(r, c - 2);
+                    board.removePiece(r, c - 1);
+                    set.insert(new MoveImpl(r, c - 2));
+                    set.insert(new MoveImpl(r, c - 1));
+                    captures++;
+                }
+            }
+            if (right) {
+                if (board.getIntersection(r, c + 3) == cur
+                        && board.getIntersection(r, c + 2) == opp
+                        && board.getIntersection(r, c + 1) == opp) {
+                    board.removePiece(r, c + 2);
+                    board.removePiece(r, c + 1);
+                    set.insert(new MoveImpl(r, c + 2));
+                    set.insert(new MoveImpl(r, c + 1));
+                    captures++;
+                }
+            }
+            if (cur == PieceType.WHITE) whiteCaptures += captures;
+            else blackCaptures += captures;
+        }
+
+        @Override
         public void run() {
             if (score != null) return;
             int tempScore = 0;
-            for (int i = 0; i < 15000; i++) {
+            for (int i = 0; i < 12500; i++) { // perform 12,500 rollouts for the given move
                 PieceType winner = null;
                 while (winner == null && set.index > 0) {
                     Move nextMove = this.set.getRandom();

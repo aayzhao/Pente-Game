@@ -23,8 +23,14 @@ public class Main {
 
         Scanner scan = new Scanner(System.in);
         Pattern pattern = Pattern.compile("^[a-z|Ae4-Z][0-9]+$");
-        // model.move(4, 4);
         String input = "";
+        System.out.println("Would you like to play white (w) or black (b)? ");
+        input = scan.next("[a-z]*");
+
+        if (input.charAt(0) == 'b') {
+            Move firstCPUMove = cpu.bestMove(1, model.getBoard(), 0, 0);
+            model.move(firstCPUMove.getRowCoord(), firstCPUMove.getColumnCoord());
+        }
 
         while (!input.equals("quit") && !model.isWon()) {
             input = scan.next();
@@ -41,7 +47,11 @@ public class Main {
                 }
                 model.move(r, c);
 
-                Move cpuMove = cpu.bestMove(model.getHalfPly(), model.getBoard(), model.getWhitePlayerCaptures(), model.getBlackPlayerCaptures());
+                Move cpuMove = cpu.bestMove(
+                        model.getHalfPly(),
+                        model.getBoard(),
+                        model.getWhitePlayerCaptures(),
+                        model.getBlackPlayerCaptures());
                 model.move(cpuMove.getRowCoord(), cpuMove.getColumnCoord());
             }
         }
