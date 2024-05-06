@@ -17,6 +17,10 @@ public class FullRolloutMCTSComputer implements PenteComputer  {
         return 0.0;
     }
 
+    @Override
+    public String toString() {
+        return "MCTSv1.1";
+    }
 
     @Override
     public Move bestMove(int halfPly, Board board, int whiteCaptures, int blackCaptures) throws InterruptedException {
@@ -53,15 +57,17 @@ public class FullRolloutMCTSComputer implements PenteComputer  {
         int score = movesToSearch.get(idx).score;
         int multiplier = halfPly % 2 == 1 ? 1 : -1;
         for (int i = 1; i < movesToSearch.size(); i++) {
+            System.out.println(movesToSearch.get(i).score);
             if (movesToSearch.get(i).score * multiplier > movesToSearch.get(idx).score * multiplier) {
                 idx = i;
                 score = movesToSearch.get(i).score;
-                // System.out.println(movesToSearch.get(i).score);
+                System.out.println(movesToSearch.get(i).score);
             }
         }
 
         Move best = movesToSearch.get(idx).getMove();
-        System.out.printf("Best Move for %s: %s\nScore: %.2f\n", halfPly % 2 == 1 ? "white" : "black", best.toString(), ((double) score) / 125);
+        System.out.printf("Best Move for %s: %s\nScore: %.2f\n", halfPly % 2 == 1 ? "white" : "black", best.toString(),
+                (((double) score) + (12500.0 - ((double) score)) / 2.0)/ 12500.0);
         return movesToSearch.get(idx).getMove();
     }
 
@@ -81,7 +87,7 @@ public class FullRolloutMCTSComputer implements PenteComputer  {
             super.move(move.getRowCoord(), move.getColumnCoord());
             PieceType won = super.getWinner();
             if (won != null) {
-                score = halfPly % 2 == 1 ? 12500 : -12500;
+                score = won == PieceType.WHITE ? 12500 : -12500;
             } else {
                 startBoard = super.board.copy();
                 originalHalfPly = halfPly + 1;
@@ -220,7 +226,7 @@ public class FullRolloutMCTSComputer implements PenteComputer  {
         public void run() {
             if (score != null) return;
             int tempScore = 0;
-            for (int i = 0; i < 12500; i++) { // perform 12,500 rollouts for the given move
+            for (int i = 0; i < 12500; i++) { // perform 15000 rollouts for the given move
                 PieceType winner = null;
                 while (winner == null && set.index > 0) {
                     Move nextMove = this.set.getRandom();

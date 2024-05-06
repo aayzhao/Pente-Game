@@ -1,5 +1,6 @@
 package aayzhao.pente;
 
+import aayzhao.pente.computer.FastMCTSComputer;
 import aayzhao.pente.computer.FullRolloutMCTSComputer;
 import aayzhao.pente.computer.Move;
 import aayzhao.pente.computer.PenteComputer;
@@ -18,14 +19,15 @@ public class Main {
         Model model = new ModelImpl(9);
         CLIView view = new CLIView(model);
         PenteComputer cpu = new FullRolloutMCTSComputer();
+        PenteComputer cpuOld = new FastMCTSComputer();
         System.out.println("Board:");
         model.update();
 
         Scanner scan = new Scanner(System.in);
         Pattern pattern = Pattern.compile("^[a-z|Ae4-Z][0-9]+$");
         String input = "";
-        System.out.println("Would you like to play white (w) or black (b)? ");
-        input = scan.next("[a-z]*");
+         System.out.println("Would you like to play white (w) or black (b)? ");
+         input = scan.next("[a-z]*");
 
         if (input.charAt(0) == 'b') {
             Move firstCPUMove = cpu.bestMove(1, model.getBoard(), 0, 0);
@@ -46,18 +48,27 @@ public class Main {
                     c = lastNumberInt - 1;
                 }
                 model.move(r, c);
+//                Move cpu1Move = cpuOld.bestMove(
+//                        model.getHalfPly(),
+//                        model.getBoard(),
+//                        model.getWhitePlayerCaptures(),
+//                        model.getBlackPlayerCaptures()
+//                );
+//                System.out.println(cpuOld);
+//                model.move(cpu1Move.getRowCoord(), cpu1Move.getColumnCoord());
 
-                Move cpuMove = cpu.bestMove(
+                Move cpu2Move = cpu.bestMove(
                         model.getHalfPly(),
                         model.getBoard(),
                         model.getWhitePlayerCaptures(),
-                        model.getBlackPlayerCaptures());
-                model.move(cpuMove.getRowCoord(), cpuMove.getColumnCoord());
+                        model.getBlackPlayerCaptures()
+                );
+                System.out.println(cpu);
+                model.move(cpu2Move.getRowCoord(), cpu2Move.getColumnCoord());
             }
         }
         String player = model.getWinner() == PieceType.WHITE ? "White" : "Black";
         System.out.println(player + " wins");
-
 //        MCTSComputer.RandomGame randomGame = new MCTSComputer.RandomGame(0, new BoardImpl(9), 0, 0, new MoveImpl(4, 4));
 //        Thread thread = new Thread(randomGame);
 //        thread.start();

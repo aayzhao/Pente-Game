@@ -11,6 +11,7 @@ public class CLIView implements ModelObserver {
     }
     @Override
     public void update(Model model) {
+        System.out.printf("\n____________\nPly: %.1f\n", ((double) model.getHalfPly() / 2));
         System.out.printf("White Captures: %d\tBlack Captures: %d\n", model.getWhitePlayerCaptures(), model.getBlackPlayerCaptures());
         String playerMove = model.getHalfPly() % 2 == 1 ? "White to move: " : "Black to move: ";
         System.out.println(playerMove);
