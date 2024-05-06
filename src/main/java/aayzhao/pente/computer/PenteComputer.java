@@ -5,17 +5,21 @@ import aayzhao.pente.game.model.Board;
 public interface PenteComputer {
     /**
      * Returns the game score. Positive indicates advantage for White, negative indicates advantage for Black
-     * @param halfPly   odd indicates white's turn to move, even indicates black
-     * @param board     Board to analyze
-     * @return          calculated game score
+     * @param halfPly           odd indicates white's turn to move, even indicates black
+     * @param board             Board to analyze
+     * @param whiteCaptures     times white has captured
+     * @param blackCaptures     times black has captured
+     * @return                  calculated game score
      */
-    int advantage(int halfPly, Board board);
+    int advantage(int halfPly, Board board, int whiteCaptures, int blackCaptures);
 
     /**
      * Returns the calculated best move for the given board state and half ply.
-     * @param halfPly   half ply
-     * @param board     current game state
-     * @return          best expected move
+     * @param halfPly           odd indicates white's turn to move, even indicates black
+     * @param board             Board to analyze
+     * @param whiteCaptures     times white has captured
+     * @param blackCaptures     times black has captured
+     * @return                  best expected move
      */
-    Move bestMove(int halfPly, Board board);
+    Move bestMove(int halfPly, Board board, int whiteCaptures, int blackCaptures) throws InterruptedException;
 }

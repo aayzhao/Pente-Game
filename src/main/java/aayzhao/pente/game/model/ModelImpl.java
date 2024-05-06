@@ -4,11 +4,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ModelImpl implements Model {
-    private int whiteCaptures; // black stones captured by the white player
-    private int blackCaptures; // white stones captured by the black player
-    private Board board;
-    private int halfPly; // current full turn in progress
-    private List<ModelObserver> observers;
+    protected int whiteCaptures; // black stones captured by the white player
+    protected int blackCaptures; // white stones captured by the black player
+    protected Board board;
+    protected int halfPly; // current full turn in progress
+    protected final List<ModelObserver> observers;
 
     public ModelImpl() {
         this(19);
@@ -20,6 +20,14 @@ public class ModelImpl implements Model {
         blackCaptures = 0;
         this.halfPly = 1;
         this.observers = new ArrayList<>();
+    }
+
+    public ModelImpl(Board board, int whiteCaptures, int blackCaptures, int halfPly) {
+        this.observers = new ArrayList<>();
+        this.whiteCaptures = whiteCaptures;
+        this.blackCaptures = blackCaptures;
+        this.halfPly =  halfPly;
+        this.board = board.copy(); // get a deep copy of the input board
     }
 
     @Override

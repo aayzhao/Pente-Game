@@ -35,4 +35,10 @@ public interface Board {
      *
      */
     void clearBoard();
+
+    /**
+     * Returns a deep copy of this board
+     * @return      deep copy of this board
+     */
+    Board copy();
 }

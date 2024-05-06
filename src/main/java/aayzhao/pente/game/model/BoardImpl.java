@@ -54,4 +54,16 @@ public class BoardImpl implements  Board{
     public void clearBoard() {
         board = new int[size][size];
     }
+
+    @Override
+    public Board copy() {
+        Board temp = new BoardImpl(this.getSize());
+        for (int i = 0; i < this.size; i++) {
+            for (int j = 0; j < this.size; j++) {
+                if (this.getIntersection(i, j) != PieceType.EMPTY)
+                    temp.placePiece(this.getIntersection(i, j), i, j);
+            }
+        }
+        return temp;
+    }
 }
