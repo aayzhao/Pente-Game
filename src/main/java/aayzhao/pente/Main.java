@@ -1,6 +1,7 @@
 package aayzhao.pente;
 
 import aayzhao.pente.computer.Move;
+import aayzhao.pente.computer.MoveImpl;
 import aayzhao.pente.computer.PenteComputer;
 import aayzhao.pente.computer.mcts.naive.FastMCTSComputer;
 import aayzhao.pente.computer.mcts.naive.FullRolloutMCTSComputer;
@@ -40,12 +41,16 @@ public class Main {
 
 
             if (input.charAt(0) == 'b') {
+                System.out.println("Playing as Black");
                 Move firstCPUMove = cpu.bestMove(1, model.getBoard(), 0, 0, null);
                 model.move(firstCPUMove.getRowCoord(), firstCPUMove.getColumnCoord());
             }
         }
         while (!input.equals("quit") && !model.isWon()) {
-            if (!player1CPU) input = scan.next();
+            if (!player1CPU) {
+                if (input.charAt(0) == 'w') System.out.println("Playing as White");
+                input = scan.next();
+            }
             if (!pattern.matcher(input).find() && !player1CPU) {
                 continue;
             } else {
@@ -59,6 +64,7 @@ public class Main {
                         int lastNumberInt = Integer.parseInt(someNumberStr);
                         c = lastNumberInt - 1;
                     }
+                    cpu1Move = new MoveImpl(r, c);
                     model.move(r, c);
                 } else {
                     cpu1Move = cpu11.bestMove(
@@ -77,7 +83,7 @@ public class Main {
                         model.getBoard(),
                         model.getWhitePlayerCaptures(),
                         model.getBlackPlayerCaptures(),
-                        null
+                        cpu1Move
                 );
                 System.out.println(cpu);
                 model.move(cpu2Move.getRowCoord(), cpu2Move.getColumnCoord());
