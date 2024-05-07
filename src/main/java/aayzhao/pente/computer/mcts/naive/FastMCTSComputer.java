@@ -77,7 +77,7 @@ public class FastMCTSComputer implements PenteComputer {
     }
 
     @Override
-    public Move bestMove(Move prevMove) throws InterruptedException {
+    public Move bestMove(int halfPly, Move prevMove) throws InterruptedException {
         return null;
     }
 

@@ -27,5 +27,5 @@ public interface PenteComputer {
     /**
      * Returns the calculated best move for an assumed board state after the input move is made
      */
-    Move bestMove(Move prevMove) throws InterruptedException;
+    Move bestMove(int halfPly, Move prevMove) throws InterruptedException;
 }

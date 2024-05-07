@@ -1,6 +1,6 @@
 package aayzhao.pente.computer;
 
-public class MoveImpl implements Move{
+public class MoveImpl implements Move {
     int[] pair;
     public MoveImpl(int r, int c) {
         pair = new int[2];
@@ -29,5 +29,17 @@ public class MoveImpl implements Move{
     @Override
     public String toString() {
         return getAlphaNumericCoord();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null) return false;
+        if (o.getClass() != MoveImpl.class) return false;
+        return (((MoveImpl) o).getRowCoord() == this.getRowCoord() && ((MoveImpl) o).getColumnCoord() == this.getColumnCoord());
+    }
+
+    @Override
+    public int compareTo(Move o) {
+        return o.toString().compareTo(this.toString());
     }
 }

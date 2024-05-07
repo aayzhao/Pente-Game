@@ -20,7 +20,7 @@ import java.util.regex.Pattern;
  * Naive implementation of MTCS that does successively more rollouts for the better moves
  */
 public class Main {
-    public static boolean player1CPU = false;
+    public static boolean player1CPU = true;
     final static Pattern lastIntPattern = Pattern.compile("[^0-9]+([0-9]+)$");
     public static void main(String[] args) throws InterruptedException {
         Model model = new ModelImpl(9);
