@@ -22,5 +22,10 @@ public interface PenteComputer {
      * @param blackCaptures     times black has captured
      * @return                  best expected move
      */
-    Move bestMove(int halfPly, Board board, int whiteCaptures, int blackCaptures) throws InterruptedException;
+    Move bestMove(int halfPly, Board board, int whiteCaptures, int blackCaptures, Move oppMove) throws InterruptedException;
+
+    /**
+     * Returns the calculated best move for an assumed board state after the input move is made
+     */
+    Move bestMove(Move prevMove) throws InterruptedException;
 }

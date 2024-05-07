@@ -1,19 +1,21 @@
-package aayzhao.pente.computer;
+package aayzhao.pente.computer.mcts.naive;
 
+import aayzhao.pente.computer.Move;
+import aayzhao.pente.computer.MoveImpl;
+import aayzhao.pente.computer.PenteComputer;
+import aayzhao.pente.computer.RandomizedMoveSet;
 import aayzhao.pente.game.model.Board;
 import aayzhao.pente.game.model.ModelImpl;
 import aayzhao.pente.game.model.PieceType;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Random;
 
 /**
  * incorrect implementation of a full rollout MCTS Computer that still performs better than
  * a completely new player to the game.
  */
-public class FastMCTSComputer implements PenteComputer  {
+public class FastMCTSComputer implements PenteComputer {
     private static final Random random = new Random();
     @Override
     public double advantage(int halfPly, Board board, int whiteCaptures, int blackCaptures) {
@@ -26,7 +28,7 @@ public class FastMCTSComputer implements PenteComputer  {
     }
 
     @Override
-    public Move bestMove(int halfPly, Board board, int whiteCaptures, int blackCaptures) throws InterruptedException {
+    public Move bestMove(int halfPly, Board board, int whiteCaptures, int blackCaptures, Move oppMove) throws InterruptedException {
         ArrayList<RandomGame> movesToSearch = new ArrayList<>();
         PieceType player = halfPly % 2 == 1 ? PieceType.WHITE : PieceType.BLACK;
         for (int i = 0; i < board.getSize(); i++) {
@@ -72,6 +74,11 @@ public class FastMCTSComputer implements PenteComputer  {
         System.out.printf("Best Move for %s: %s\nScore: %.2f\n", halfPly % 2 == 1 ? "white" : "black", best.toString(),
                 (((double) score) + (10000.0 - ((double) score)) / 2.0)/ 10000.0);
         return movesToSearch.get(idx).getMove();
+    }
+
+    @Override
+    public Move bestMove(Move prevMove) throws InterruptedException {
+        return null;
     }
 
     public static class RandomGame extends ModelImpl implements Runnable {
@@ -127,7 +134,7 @@ public class FastMCTSComputer implements PenteComputer  {
             int tempScore = 0;
             for (int i = 0; i < 10000; i++) {
                 PieceType winner = null;
-                while (winner == null && set.index > 0) {
+                while (winner == null && set.getIndex() > 0) {
                     Move nextMove = this.set.getRandom();
                     super.move(nextMove.getRowCoord(), nextMove.getColumnCoord());
                     winner = super.getWinner();
@@ -137,44 +144,6 @@ public class FastMCTSComputer implements PenteComputer  {
                 reset();
             }
             this.score = tempScore;
-        }
-    }
-
-    private static class RandomizedMoveSet {
-        int index;
-        Move[] vals;
-        Map<Move,Integer> map;
-        Random rand;
-
-        public RandomizedMoveSet(int size, Random random) {
-            index = 0;
-            vals = new Move[size * size + 1];
-            map = new HashMap<>();
-            rand = random;
-        }
-
-        public boolean insert(Move val) {
-            if (map.containsKey(val)) return false;
-            map.put(val, index);
-            vals[index++] = val;
-            return true;
-        }
-
-        public boolean remove(Move val) {
-            if (!map.containsKey(val)) return false;
-            int temp_index = map.remove(val);
-            Move temp_val = vals[index - 1];
-            index--;
-
-            vals[temp_index] = temp_val;
-            map.replace(temp_val, index, temp_index);
-            return true;
-        }
-
-        public Move getRandom() {
-            Move target = vals[rand.nextInt(index)];
-            remove(target);
-            return target;
         }
     }
 }
