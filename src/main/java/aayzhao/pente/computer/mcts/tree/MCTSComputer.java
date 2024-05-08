@@ -10,7 +10,10 @@ import aayzhao.pente.game.model.Model;
 import aayzhao.pente.game.model.ModelImpl;
 
 import java.util.Random;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MCTSComputer implements PenteComputer {
     protected static Random random = new Random();
@@ -24,6 +27,8 @@ public class MCTSComputer implements PenteComputer {
         this.size = size;
         this.firstMove = true;
     }
+    private static final int NUM_THREADS = Runtime.getRuntime().availableProcessors();
+    private final ExecutorService executorService = Executors.newFixedThreadPool(Math.min(1, NUM_THREADS - 1));
 
     @Override
     public double advantage(int halfPly, Board board, int whiteCaptures, int blackCaptures) {
@@ -140,6 +145,11 @@ public class MCTSComputer implements PenteComputer {
     @Override
     public String toString() {
         return "MCTSv2.0";
+    }
+
+
+    public void shutdown() {
+        executorService.shutdown();
     }
 }
 
@@ -339,4 +349,21 @@ class MCTSNode {
         if (parent != null) parent.backpropagate(score);
         // if (move == null) System.out.println(proportion);
     }
+
+//    /**
+//     * Rollout task that encapsulates a random game's execution.
+//     */
+//    private static class RolloutTask implements Callable<Integer> {
+//        private final RandomGame game;
+//
+//        public RolloutTask(RandomGame game) {
+//            this.game = game;
+//        }
+//
+//        @Override
+//        public Integer call() {
+//            game.run();
+//            return game.score;
+//        }
+//    }
 }

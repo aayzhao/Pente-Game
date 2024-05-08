@@ -1,12 +1,14 @@
 package aayzhao.pente;
 
+import aayzhao.pente.computer.MoveImpl;
+import aayzhao.pente.computer.mcts.RandBlockGame;
 import aayzhao.pente.computer.mcts.tree.Proportion;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class AppTest {
+
     @Test
     public void sanityTrue() { // should answer true
         assertTrue(true);
@@ -47,5 +49,34 @@ public class AppTest {
         assertTrue(target.compareTo(prop3) > 0);
         assertEquals(0, target.compareTo(prop4));
         assertTrue(target.compareTo(prop5) < 0);
+    }
+
+    @Test
+    public void makesFiveTest1() {
+        RandBlockGame game = new RandBlockGame(2, GameTestData.fourWhiteBackDiagonal, 0, 0, new MoveImpl(0, 0), 1);
+        assertTrue(game.checkMakesFive(new MoveImpl(2, 3)));
+        assertFalse(game.checkMakesFive(new MoveImpl(8,8)));
+    }
+
+    @Test
+    public void makesFiveTest2() {
+        RandBlockGame game = new RandBlockGame(2, GameTestData.fourWhiteForwardDiagonal, 0, 0, new MoveImpl(0, 0), 1);
+        assertTrue(game.checkMakesFive(new MoveImpl(3, 8)));
+        assertFalse(game.checkMakesFive(new MoveImpl(8,8)));
+    }
+
+    @Test
+    public void makesFiveTest3() {
+        RandBlockGame game = new RandBlockGame(1, GameTestData.fourBlackHorizontal, 0, 0, new MoveImpl(0, 0), 1);
+        assertTrue(game.checkMakesFive(new MoveImpl(3, 8)));
+        assertTrue(game.checkMakesFive(new MoveImpl(3, 3)));
+        assertFalse(game.checkMakesFive(new MoveImpl(8,8)));
+    }
+
+    @Test
+    public void makesFiveTest4() {
+        RandBlockGame game = new RandBlockGame(1, GameTestData.fourBlackVertical, 0, 0, new MoveImpl(0, 0), 1);
+        assertTrue(game.checkMakesFive(new MoveImpl(5, 4)));
+        assertFalse(game.checkMakesFive(new MoveImpl(8,8)));
     }
 }

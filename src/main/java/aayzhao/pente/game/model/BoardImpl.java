@@ -16,6 +16,21 @@ public class BoardImpl implements  Board{
     }
 
     /**
+     * Constructor that takes in a pre-made array
+     */
+    public BoardImpl(int[][] arr) {
+        if (arr.length == 0 || arr[0].length != arr.length)
+            throw new IllegalArgumentException("Array must be a square with nonzero length");
+        for (int i = 0; i < arr.length; i++) {
+            for (int j = 0; j < arr.length; j++) {
+                if (arr[i][j] < 0 || arr[i][j] > 2) throw new IllegalArgumentException("Values must be valid for piecetype");
+            }
+        }
+        this.size = arr.length;
+        board = arr;
+    }
+
+    /**
      * Throws index out of bounds exception if the given coordinates are invalid for the board size.
      * @param r row
      * @param c column

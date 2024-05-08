@@ -93,5 +93,8 @@ public class Main {
         }
         String player = model.getWinner() == PieceType.WHITE ? "White" : "Black";
         System.out.println(player + " wins");
+//        if (cpu instanceof MCTSComputer) {
+//            ((MCTSComputer) cpu).shutdown();
+//        }
     }
 }
