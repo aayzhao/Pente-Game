@@ -4,6 +4,7 @@ import aayzhao.pente.computer.Move;
 import aayzhao.pente.computer.MoveImpl;
 import aayzhao.pente.computer.PenteComputer;
 import aayzhao.pente.computer.RandomizedMoveSet;
+import aayzhao.pente.computer.mcts.RandBlockGame;
 import aayzhao.pente.computer.mcts.RandomGame;
 import aayzhao.pente.game.model.Board;
 import aayzhao.pente.game.model.Model;
@@ -22,14 +23,13 @@ public class MCTSComputer implements PenteComputer {
     MCTSNode root;
     private int size;
     private boolean firstMove;
+    private static final int NUM_THREADS = Runtime.getRuntime().availableProcessors();
+    private final ExecutorService executorService = Executors.newFixedThreadPool(Math.min(1, NUM_THREADS - 1));
     public MCTSComputer(int size) {
         this.root = null;
         this.size = size;
         this.firstMove = true;
     }
-    private static final int NUM_THREADS = Runtime.getRuntime().availableProcessors();
-    private final ExecutorService executorService = Executors.newFixedThreadPool(Math.min(1, NUM_THREADS - 1));
-
     @Override
     public double advantage(int halfPly, Board board, int whiteCaptures, int blackCaptures) {
         return 0;
@@ -50,7 +50,7 @@ public class MCTSComputer implements PenteComputer {
 
         // begin searching for at least 3 seconds:
         long startTime = System.nanoTime();
-        long searchTime = 5000000000L;
+        long searchTime = 6000000000L;
         while (System.nanoTime() - startTime < searchTime) {
             MCTSNode leaf = traverse(root);
 
@@ -321,7 +321,7 @@ class MCTSNode {
         if (this.move == null) throw new IllegalStateException("Null move for + " + this);
         // if (this.proportion.denominator > 0)
         //    throw new IllegalStateException("Cannot do a rollout on already simulated node");
-        RandomGame game = new RandomGame(
+        RandomGame game = new RandBlockGame(
                 this.model.getHalfPly(),
                 this.model.getBoard(),
                 this.model.getWhitePlayerCaptures(),

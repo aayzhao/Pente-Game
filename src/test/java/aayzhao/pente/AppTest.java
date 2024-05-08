@@ -79,4 +79,15 @@ public class AppTest {
         assertTrue(game.checkMakesFive(new MoveImpl(5, 4)));
         assertFalse(game.checkMakesFive(new MoveImpl(8,8)));
     }
+
+    @Test
+    public void testRandBlockGame() {
+        RandBlockGame game = new RandBlockGame(1, GameTestData.fourBlackVertical.copy(), 0, 0, new MoveImpl(0, 0), 10);
+        game.run();
+        assertEquals(-10, game.score);
+
+        RandBlockGame game2 = new RandBlockGame(1, GameTestData.fourBlackVertical.copy(), 0, 0, new MoveImpl(0, 0), 100);
+        game2.run();
+        assertEquals(-100, game2.score);
+    }
 }

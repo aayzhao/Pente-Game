@@ -44,4 +44,8 @@ public class RandomizedMoveSet {
         remove(target);
         return target;
     }
+
+    public Move[] getVals() {
+        return vals;
+    }
 }
