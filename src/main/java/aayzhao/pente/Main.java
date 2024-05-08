@@ -48,6 +48,8 @@ public class Main {
                 model.move(firstCPUMove.getRowCoord(), firstCPUMove.getColumnCoord());
             }
         }
+        Move cpu1Move = null;
+        Move cpu2Move = null;
         while (!input.equals("quit") && !model.isWon()) {
             if (!player1CPU) {
                 if (input.charAt(0) == 'w') System.out.println("Playing as White");
@@ -56,7 +58,6 @@ public class Main {
             if (!pattern.matcher(input).find() && !player1CPU) {
                 continue;
             } else {
-                Move cpu1Move;
                 if (!player1CPU) {
                     int r = input.charAt(0) - 'a';
                     int c = -1;
@@ -69,32 +70,32 @@ public class Main {
                     cpu1Move = new MoveImpl(r, c);
                     model.move(r, c);
                 } else {
-                    cpu1Move = cpu11.bestMove(
+                    cpu1Move = cpu.bestMove(
                             model.getHalfPly(),
                             model.getBoard(),
                             model.getWhitePlayerCaptures(),
                             model.getBlackPlayerCaptures(),
-                            null
+                            cpu2Move
                     );
-                    System.out.println(cpu11);
+                    System.out.println(cpu);
                     model.move(cpu1Move.getRowCoord(), cpu1Move.getColumnCoord());
                 }
                 if (model.isWon()) break;
-                Move cpu2Move = cpu.bestMove(
+                cpu2Move = cpu11.bestMove(
                         model.getHalfPly(),
                         model.getBoard(),
                         model.getWhitePlayerCaptures(),
                         model.getBlackPlayerCaptures(),
                         cpu1Move
                 );
-                System.out.println(cpu);
+                System.out.println(cpu11);
                 model.move(cpu2Move.getRowCoord(), cpu2Move.getColumnCoord());
             }
         }
         String player = model.getWinner() == PieceType.WHITE ? "White" : "Black";
         System.out.println(player + " wins");
-//        if (cpu instanceof MCTSComputer) {
-//            ((MCTSComputer) cpu).shutdown();
-//        }
+        if (cpu instanceof MCTSComputer) {
+            ((MCTSComputer) cpu).shutdown();
+        }
     }
 }

@@ -10,22 +10,24 @@ import aayzhao.pente.game.model.Board;
 import aayzhao.pente.game.model.Model;
 import aayzhao.pente.game.model.ModelImpl;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 
 public class MCTSComputer implements PenteComputer {
     protected static Random random = new Random();
     private static boolean DEBUG = true;
-    public static final double C_CONST = Math.sqrt(2.0);
+    public static final double C_CONST = Math.sqrt(2);
     MCTSNode root;
     private int size;
     private boolean firstMove;
-    private static final int NUM_THREADS = Runtime.getRuntime().availableProcessors();
-    private final ExecutorService executorService = Executors.newFixedThreadPool(Math.min(1, NUM_THREADS - 1));
+    static final int NUM_THREADS = Runtime.getRuntime().availableProcessors();
+    static final int TARGET_THREADS = Math.max(1, Math.min(8, NUM_THREADS - 1));
+    static final ExecutorService executorService = Executors.newFixedThreadPool(TARGET_THREADS);
     public MCTSComputer(int size) {
+        if (DEBUG) System.out.println(NUM_THREADS + " threads available");
+        if (DEBUG) System.out.println(TARGET_THREADS + " threads acquired");
         this.root = null;
         this.size = size;
         this.firstMove = true;
@@ -48,9 +50,9 @@ public class MCTSComputer implements PenteComputer {
 
         root.parent = null; // remove parent node, as that is not under consideration anymore
 
-        // begin searching for at least 3 seconds:
+        // begin searching for at least 5 seconds:
         long startTime = System.nanoTime();
-        long searchTime = 6000000000L;
+        long searchTime = 5000000000L;
         while (System.nanoTime() - startTime < searchTime) {
             MCTSNode leaf = traverse(root);
 
@@ -112,7 +114,7 @@ public class MCTSComputer implements PenteComputer {
             if (next == null) next = node.children.get(key);
             else {
                 MCTSNode target = node.children.get(key);
-                if (DEBUG) System.out.println(target.proportion + "\t\t" + target.move);
+                if (DEBUG) System.out.println(target.proportion + "\t\t\t" + target.move);
                 if (target.proportion.denominator > next.proportion.denominator) next = target;
                 else if (target.proportion.denominator == next.proportion.denominator) {
                     if (target.proportion.numerator > next.proportion.numerator) next = target;
@@ -120,9 +122,8 @@ public class MCTSComputer implements PenteComputer {
             }
         }
 
-        if (DEBUG) System.out.printf("%.2f\t\t%s\n",
-                ((double)(next.proportion.numerator + next.proportion.denominator)) /
-                        (2.0 * (double) next.proportion.denominator),
+        if (DEBUG) System.out.printf("%.2f\t\t\t%s\n",
+                ((double)(next.proportion.numerator)) / ((double) next.proportion.denominator),
                 next.move);
 
         return next;
@@ -321,17 +322,41 @@ class MCTSNode {
         if (this.move == null) throw new IllegalStateException("Null move for + " + this);
         // if (this.proportion.denominator > 0)
         //    throw new IllegalStateException("Cannot do a rollout on already simulated node");
-        RandomGame game = new RandBlockGame(
-                this.model.getHalfPly(),
-                this.model.getBoard(),
-                this.model.getWhitePlayerCaptures(),
-                this.model.getBlackPlayerCaptures(),
-                this.move,
-                1
-        );
-        game.run();
+//        RandomGame game = new RandBlockGame(
+//                this.model.getHalfPly(),
+//                this.model.getBoard(),
+//                this.model.getWhitePlayerCaptures(),
+//                this.model.getBlackPlayerCaptures(),
+//                this.move,
+//                1
+//        );
+//        game.run();
 
-        this.backpropagate(game.score);
+        List<Future<Integer>> futures = new ArrayList<>();
+        for (int i = 0; i < MCTSComputer.TARGET_THREADS; i++) {
+            RandomGame rolloutGame = new RandBlockGame(
+                    this.model.getHalfPly(),
+                    this.model.getBoard(),
+                    this.model.getWhitePlayerCaptures(),
+                    this.model.getBlackPlayerCaptures(),
+                    this.move,
+                    1
+            );
+            futures.add(MCTSComputer.executorService.submit(new RolloutTask(rolloutGame)));
+        }
+
+//        this.backpropagate(game.score);
+
+        // int totalScore = 0;
+        for (Future<Integer> future : futures) {
+            try {
+                backpropagate(future.get());
+            } catch (InterruptedException | ExecutionException e) {
+                // Handle exceptions
+            }
+        }
+
+        // this.backpropagate(totalScore);
     }
 
     /**
@@ -342,7 +367,7 @@ class MCTSNode {
      */
     private synchronized void backpropagate(int score) {
         // if (move == null) System.out.println("Updating parent proportions");
-        if (score != 1 && score != -1) throw new IllegalArgumentException("Invalid score for a rollout");
+        // if (score != 1 && score != -1) throw new IllegalArgumentException("Invalid score for a rollout");
         this.proportion.denominator += 1;
         if (this.model.getHalfPly() % 2 == 1 && score > 0) this.proportion.numerator += 1;
         else if (this.model.getHalfPly() % 2 == 0 && score < 0) this.proportion.numerator += 1;
@@ -350,20 +375,20 @@ class MCTSNode {
         // if (move == null) System.out.println(proportion);
     }
 
-//    /**
-//     * Rollout task that encapsulates a random game's execution.
-//     */
-//    private static class RolloutTask implements Callable<Integer> {
-//        private final RandomGame game;
-//
-//        public RolloutTask(RandomGame game) {
-//            this.game = game;
-//        }
-//
-//        @Override
-//        public Integer call() {
-//            game.run();
-//            return game.score;
-//        }
-//    }
+    /**
+     * Rollout task that encapsulates a random game's execution.
+     */
+    private static class RolloutTask implements Callable<Integer> {
+        private final RandomGame game;
+
+        public RolloutTask(RandomGame game) {
+            this.game = game;
+        }
+
+        @Override
+        public Integer call() {
+            game.run();
+            return game.score;
+        }
+    }
 }

@@ -1,5 +1,6 @@
 package aayzhao.pente;
 
+import aayzhao.pente.computer.Move;
 import aayzhao.pente.computer.MoveImpl;
 import aayzhao.pente.computer.mcts.RandBlockGame;
 import aayzhao.pente.computer.mcts.tree.Proportion;
@@ -10,8 +11,9 @@ import static org.junit.jupiter.api.Assertions.*;
 public class AppTest {
 
     @Test
-    public void sanityTrue() { // should answer true
+    public void sanityBooleans() { // should answer true
         assertTrue(true);
+        assertFalse(false);
     }
 
     @Test
@@ -89,5 +91,105 @@ public class AppTest {
         RandBlockGame game2 = new RandBlockGame(1, GameTestData.fourBlackVertical.copy(), 0, 0, new MoveImpl(0, 0), 100);
         game2.run();
         assertEquals(-100, game2.score);
+    }
+
+    @Test
+    public void testMakeFour1() {
+        RandBlockGame game = new RandBlockGame(1, GameTestData.threeUncontestedBlackVert.copy(), 0, 0, new MoveImpl(0, 0), 1);
+        assertTrue(game.checkMakesLen(new MoveImpl(7,1), 4));
+        assertTrue(game.checkMakesFourUncontested(new MoveImpl(7,1)));
+        assertFalse(game.checkMakesFourUncontested(new MoveImpl(0,3)));
+    }
+
+    @Test
+    public void testMakeFour2() {
+        RandBlockGame game = new RandBlockGame(2, GameTestData.threeWhiteForwardDiagonal.copy(), 0, 0, new MoveImpl(0,0), 1);
+        assertTrue(game.checkMakesLen(new MoveImpl(3,3), 4));
+        assertFalse(game.checkMakesFourUncontested(new MoveImpl(3,3)));
+    }
+
+    @Test
+    public void testMakeFour3() {
+        RandBlockGame game = new RandBlockGame(2, GameTestData.threeWhiteForwardDiagonalDisc.copy(), 0, 0, new MoveImpl(0,0), 1);
+        assertTrue(game.checkMakesLen(new MoveImpl(3, 3), 4));
+        assertTrue(game.checkMakesFourUncontested(new MoveImpl(3, 3)));
+        assertFalse(game.checkMakesFourUncontested(new MoveImpl(0, 1)));
+    }
+
+    @Test
+    public void testMakeFour4() {
+        RandBlockGame game = new RandBlockGame(2, GameTestData.threeWhiteForwardDiagonalDiscContested.copy(), 0, 0, new MoveImpl(0,0), 1);
+        assertTrue(game.checkMakesLen(new MoveImpl(3, 3), 4));
+        assertFalse(game.checkMakesFourUncontested(new MoveImpl(3, 3)));
+        assertFalse(game.checkMakesFourUncontested(new MoveImpl(0, 1)));
+    }
+
+    @Test
+    public void testMakeFour5() {
+        RandBlockGame game = new RandBlockGame(2, GameTestData.threeWhite1.copy(), 0, 0, new MoveImpl(0, 0), 1);
+        assertTrue(game.checkMakesLen(new MoveImpl(7,5), 4));
+        assertFalse(game.checkMakesFourUncontested(new MoveImpl(7,5)));
+        assertTrue(game.checkMakesFourUncontested(new MoveImpl(2,3)));
+        assertFalse(game.checkMakesFourUncontested(new MoveImpl(0,1)));
+    }
+
+    @Test
+    public void testNoUncontested() {
+        RandBlockGame game = new RandBlockGame(2, GameTestData.threeContestedWhite, 0, 0, new MoveImpl(0, 0), 1);
+        for (int i = 0; i < game.getBoardSize(); i++) {
+            for (int j = 0; j < game.getBoardSize(); j++) {
+                if (game.isValidMove(i, j)) {
+                    Move move = new MoveImpl(i, j);
+                    assertFalse(game.checkMakesFourUncontested(move));
+                    assertFalse(game.checkMakesFive(move));
+                }
+            }
+        }
+        assertTrue(game.checkMakesLen(new MoveImpl(2,3), 4));
+    }
+
+    @Test
+    public void testForceWin() {
+        RandBlockGame game = new RandBlockGame(2, GameTestData.threeContestedWhite, 0, 0, new MoveImpl(0, 0), 1);
+        for (int i = 0; i < game.getBoardSize(); i++) {
+            for (int j = 0; j < game.getBoardSize(); j++) {
+                if (game.isValidMove(i, j)) {
+                    Move move = new MoveImpl(i, j);
+                    assertFalse(game.checkForceWin(move));
+                }
+            }
+        }
+        assertTrue(game.checkMakesLen(new MoveImpl(2,3), 4));
+    }
+
+    @Test
+    public void testForceWin2() {
+        RandBlockGame game = new RandBlockGame(2, GameTestData.threeWhite1.copy(), 0, 0, new MoveImpl(0, 0), 1);
+        assertTrue(game.checkMakesLen(new MoveImpl(7,5), 4));
+        assertFalse(game.checkForceWin(new MoveImpl(7,5)));
+        assertTrue(game.checkForceWin(new MoveImpl(2,3)));
+        assertFalse(game.checkForceWin(new MoveImpl(0,1)));
+    }
+
+    @Test
+    public void testForceWin3() {
+        RandBlockGame game = new RandBlockGame(2, GameTestData.fourWhiteBackDiagonal, 0, 0, new MoveImpl(0, 0), 1);
+        assertTrue(game.checkForceWin(new MoveImpl(2, 3)));
+        assertFalse(game.checkMakesFive(new MoveImpl(8,8)));
+    }
+
+    @Test
+    public void testForceWin4() {
+        RandBlockGame game = new RandBlockGame(1, GameTestData.fourBlackHorizontal, 0, 0, new MoveImpl(0, 0), 1);
+        assertTrue(game.checkForceWin(new MoveImpl(3, 8)));
+        assertTrue(game.checkForceWin(new MoveImpl(3, 3)));
+        assertFalse(game.checkMakesFive(new MoveImpl(8,8)));
+    }
+
+    @Test
+    public void testForceWin5() {
+        RandBlockGame game = new RandBlockGame(1, GameTestData.fourBlackVertical, 0, 0, new MoveImpl(0, 0), 1);
+        assertTrue(game.checkForceWin(new MoveImpl(5, 4)));
+        assertFalse(game.checkForceWin(new MoveImpl(8,8)));
     }
 }
