@@ -2,6 +2,8 @@ package aayzhao.pente.computer;
 
 import aayzhao.pente.game.model.Board;
 
+import java.util.concurrent.ExecutionException;
+
 public interface PenteComputer {
     /**
      * Returns the game score. Positive indicates advantage for White, negative indicates advantage for Black.
@@ -22,7 +24,7 @@ public interface PenteComputer {
      * @param blackCaptures     times black has captured
      * @return                  best expected move
      */
-    Move bestMove(int halfPly, Board board, int whiteCaptures, int blackCaptures, Move oppMove) throws InterruptedException;
+    Move bestMove(int halfPly, Board board, int whiteCaptures, int blackCaptures, Move oppMove) throws InterruptedException, ExecutionException;
 
     /**
      * Returns the calculated best move for an assumed board state after the input move is made

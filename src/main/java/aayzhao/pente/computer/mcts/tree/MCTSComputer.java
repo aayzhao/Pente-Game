@@ -12,6 +12,7 @@ import aayzhao.pente.game.model.ModelImpl;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
 import java.util.Random;
 import java.util.concurrent.*;
 
@@ -24,7 +25,8 @@ public class MCTSComputer implements PenteComputer {
     private boolean firstMove;
     static final int NUM_THREADS = Runtime.getRuntime().availableProcessors();
     static final int TARGET_THREADS = Math.max(1, Math.min(8, NUM_THREADS - 1));
-    static final ExecutorService executorService = Executors.newFixedThreadPool(TARGET_THREADS);
+    final ExecutorService executorService = Executors.newWorkStealingPool(TARGET_THREADS);
+    final BlockingQueue<Future<Integer>> futureBlockingQueue = new LinkedBlockingQueue<>();
     public MCTSComputer(int size) {
         if (DEBUG) System.out.println(NUM_THREADS + " threads available");
         if (DEBUG) System.out.println(TARGET_THREADS + " threads acquired");
@@ -38,13 +40,13 @@ public class MCTSComputer implements PenteComputer {
     }
 
     @Override
-    public Move bestMove(int halfPly, Board board, int whiteCaptures, int blackCaptures, Move oppMove) throws InterruptedException {
+    public Move bestMove(int halfPly, Board board, int whiteCaptures, int blackCaptures, Move oppMove) throws InterruptedException, ExecutionException {
         if (root != null) {
             root = root.children.get(oppMove); // move to correct node for opponent move
         }
         if (root == null) {
             // generate root node
-            root = MCTSNode.createNode(board, whiteCaptures, blackCaptures, halfPly);
+            root = MCTSNode.createNode(board, whiteCaptures, blackCaptures, halfPly, this);
             System.out.println(root);
         }
 
@@ -57,6 +59,10 @@ public class MCTSComputer implements PenteComputer {
             MCTSNode leaf = traverse(root);
 
             leaf.rollout();
+
+            while (!futureBlockingQueue.isEmpty()) {
+                futureBlockingQueue.poll().get();
+            }
         }
 //        for (int i = 0; i < 10; i++) {
 //            System.out.println("Traversal " + (i + 1) + ":");
@@ -101,7 +107,7 @@ public class MCTSComputer implements PenteComputer {
         }
 
         if (node == curNode) {
-            return MCTSNode.createNode(node, node.possibleChildren.getRandom());
+            return MCTSNode.createNode(node, node.possibleChildren.getRandom(), this);
         }
 
         return curNode;
@@ -156,6 +162,10 @@ public class MCTSComputer implements PenteComputer {
 
 class MCTSNode {
     /**
+     * The Computer that this node is a part of.
+     */
+    private final MCTSComputer cpu;
+    /**
      * default game size for nodes in this tree
      */
     public static int DEFAULT_GAME_SIZE = 9;
@@ -194,7 +204,7 @@ class MCTSNode {
      * @param move      Move to be associated with this node
      * @return          Pointer to the newly created node
      */
-    public static MCTSNode createNode(MCTSNode parent, Move move) {
+    public static MCTSNode createNode(MCTSNode parent, Move move, MCTSComputer caller) {
         Model model;
         if (parent != null) {
             MCTSNode newNode = new MCTSNode(
@@ -202,7 +212,8 @@ class MCTSNode {
                     parent.model.getBoard(),
                     parent.model.getWhitePlayerCaptures(),
                     parent.model.getBlackPlayerCaptures(),
-                    parent.model.getHalfPly()
+                    parent.model.getHalfPly(),
+                    caller
             );
 
             if (parent.move != null) {
@@ -218,7 +229,7 @@ class MCTSNode {
             return newNode;
         } else {
             model = new ModelImpl(DEFAULT_GAME_SIZE);
-            MCTSNode newNode = new MCTSNode();
+            MCTSNode newNode = new MCTSNode(caller);
             newNode.model = model;
             newNode.move = move;
             newNode.addLeafsToSet();
@@ -236,8 +247,8 @@ class MCTSNode {
      * @param halfPly       Halfply for the game
      * @return              A new node
      */
-    public static MCTSNode createNode(Board board, int whiteCaptures, int blackCaptures, int halfPly) {
-        MCTSNode newNode = new MCTSNode();
+    public static MCTSNode createNode(Board board, int whiteCaptures, int blackCaptures, int halfPly, MCTSComputer caller) {
+        MCTSNode newNode = new MCTSNode(caller);
         newNode.model = new ModelImpl(board, whiteCaptures, blackCaptures, halfPly);
         newNode.addLeafsToSet();
         return newNode;
@@ -246,13 +257,14 @@ class MCTSNode {
     /**
      * Default constructor and creates a node with most fields null
      */
-    private MCTSNode() {
+    private MCTSNode(MCTSComputer caller) {
         this.move = null;
         this.model = null;
         this.proportion = new Proportion();
         this.children = new ConcurrentHashMap<>();
         this.parent = null;
         this.possibleChildren = new RandomizedMoveSet(DEFAULT_GAME_SIZE, MCTSComputer.random);
+        this.cpu = caller;
     }
 
     /**
@@ -265,13 +277,14 @@ class MCTSNode {
      * @param blackCaptures The current black player's captures
      * @param halfPly       The halfply before the move is being made. Indicates white (odd) or black (even) to play
      */
-    private MCTSNode(Move move, Board board, int whiteCaptures, int blackCaptures, int halfPly) {
+    private MCTSNode(Move move, Board board, int whiteCaptures, int blackCaptures, int halfPly, MCTSComputer caller) {
         this.move = move;
         this.model = new ModelImpl(board, whiteCaptures, blackCaptures, halfPly);
         this.proportion = new Proportion();
         this.children = new ConcurrentHashMap<>();
         this.parent = null;
         this.possibleChildren = new RandomizedMoveSet(board.getSize(), MCTSComputer.random);
+        this.cpu = caller;
     }
 
     /**
@@ -342,7 +355,7 @@ class MCTSNode {
                     this.move,
                     1
             );
-            futures.add(MCTSComputer.executorService.submit(new RolloutTask(rolloutGame)));
+            futures.add(cpu.executorService.submit(new RolloutTask(rolloutGame)));
         }
 
 //        this.backpropagate(game.score);
@@ -371,7 +384,7 @@ class MCTSNode {
         this.proportion.denominator += 1;
         if (this.model.getHalfPly() % 2 == 1 && score > 0) this.proportion.numerator += 1;
         else if (this.model.getHalfPly() % 2 == 0 && score < 0) this.proportion.numerator += 1;
-        if (parent != null) parent.backpropagate(score);
+        // if (parent != null) parent.backpropagate(score);
         // if (move == null) System.out.println(proportion);
     }
 
@@ -389,6 +402,23 @@ class MCTSNode {
         public Integer call() {
             game.run();
             return game.score;
+        }
+    }
+
+    /**
+     * Backpropagation task
+     */
+    private static class BackPropagationTask implements Callable<Integer> {
+        private final int score;
+        private final MCTSNode node;
+
+        public BackPropagationTask(int score, MCTSNode node) {
+            this.score = score;
+            this.node = node;
+        }
+        @Override
+        public Integer call() throws Exception {
+            return null;
         }
     }
 }
