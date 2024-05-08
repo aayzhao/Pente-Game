@@ -145,7 +145,7 @@ public class RandBlockGame extends RandomGame {
                         && isValid(r + consts[0], c + consts[1])
                         && this.getIntersection(r + consts[0], c + consts[1]) == PieceType.EMPTY
                         && isValid(r - consts[0] * 4, c - consts[1] * 4)
-                        && this.getIntersection(r - consts[0] * 4, c - consts[0] * 4) == PieceType.EMPTY)
+                        && this.getIntersection(r - consts[0] * 4, c - consts[1] * 4) == PieceType.EMPTY)
                     return true;
                 if (len == 5) return true;
                 r += consts[0];
@@ -159,7 +159,7 @@ public class RandBlockGame extends RandomGame {
                         && isValid(r - consts[0], c - consts[1])
                         && this.getIntersection(r - consts[0], c - consts[1]) == PieceType.EMPTY
                         && isValid(r + consts[0] * 4, c + consts[1] * 4)
-                        && this.getIntersection(r + consts[0] * 4, c + consts[0] * 4) == PieceType.EMPTY)
+                        && this.getIntersection(r + consts[0] * 4, c + consts[1] * 4) == PieceType.EMPTY)
                     return true;
                 if (len == 5) return true;
                 r -= consts[0];
@@ -171,7 +171,7 @@ public class RandBlockGame extends RandomGame {
     }
 
     private boolean isValid(int r, int c) {
-        return !(r < 0 || r > this.getBoardSize() - 1 || c < 0 || c > this.getBoardSize() - 1);
+        return !(r < 0 || c < 0 || r >= this.getBoardSize() || c >= this.getBoardSize());
     }
 
     @Override

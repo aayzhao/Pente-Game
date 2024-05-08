@@ -192,4 +192,12 @@ public class AppTest {
         assertTrue(game.checkForceWin(new MoveImpl(5, 4)));
         assertFalse(game.checkForceWin(new MoveImpl(8,8)));
     }
+
+    @Test
+    public void testForceWin6() {
+        RandBlockGame game = new RandBlockGame(2, GameTestData.threeContestedWhite2, 0, 0, new MoveImpl(0, 0), 1);
+        assertTrue(game.checkMakesLen(new MoveImpl(1,6), 4));
+        assertFalse(game.checkForceWin(new MoveImpl(8,8)));
+        assertFalse(game.checkForceWin(new MoveImpl(1,6)));
+    }
 }

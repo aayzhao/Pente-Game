@@ -164,7 +164,7 @@ class MCTSNode {
     /**
      * The Computer that this node is a part of.
      */
-    private final MCTSComputer cpu;
+    public final MCTSComputer cpu;
     /**
      * default game size for nodes in this tree
      */
@@ -333,19 +333,7 @@ class MCTSNode {
      */
     public void rollout() {
         if (this.move == null) throw new IllegalStateException("Null move for + " + this);
-        // if (this.proportion.denominator > 0)
-        //    throw new IllegalStateException("Cannot do a rollout on already simulated node");
-//        RandomGame game = new RandBlockGame(
-//                this.model.getHalfPly(),
-//                this.model.getBoard(),
-//                this.model.getWhitePlayerCaptures(),
-//                this.model.getBlackPlayerCaptures(),
-//                this.move,
-//                1
-//        );
-//        game.run();
-
-        List<Future<Integer>> futures = new ArrayList<>();
+        // List<Future<Integer>> futures = new ArrayList<>();
         for (int i = 0; i < MCTSComputer.TARGET_THREADS; i++) {
             RandomGame rolloutGame = new RandBlockGame(
                     this.model.getHalfPly(),
@@ -355,19 +343,19 @@ class MCTSNode {
                     this.move,
                     1
             );
-            futures.add(cpu.executorService.submit(new RolloutTask(rolloutGame)));
+            this.cpu.futureBlockingQueue.add(cpu.executorService.submit(new RolloutTask(rolloutGame, this)));
         }
 
 //        this.backpropagate(game.score);
 
         // int totalScore = 0;
-        for (Future<Integer> future : futures) {
-            try {
-                backpropagate(future.get());
-            } catch (InterruptedException | ExecutionException e) {
-                // Handle exceptions
-            }
-        }
+//        for (Future<Integer> future : futures) {
+//            try {
+//                backpropagate(future.get());
+//            } catch (InterruptedException | ExecutionException e) {
+//                // Handle exceptions
+//            }
+//        }
 
         // this.backpropagate(totalScore);
     }
@@ -393,15 +381,21 @@ class MCTSNode {
      */
     private static class RolloutTask implements Callable<Integer> {
         private final RandomGame game;
+        private final MCTSNode node;
 
-        public RolloutTask(RandomGame game) {
+        public RolloutTask(RandomGame game, MCTSNode node) {
+            if (node == null) throw new IllegalArgumentException("Null node given");
             this.game = game;
+            this.node = node;
         }
 
         @Override
         public Integer call() {
             game.run();
-            return game.score;
+
+            node.cpu.futureBlockingQueue.add(node.cpu.executorService.submit(new BackPropagationTask(game.score, this.node)));
+
+            return 0;
         }
     }
 
@@ -413,12 +407,18 @@ class MCTSNode {
         private final MCTSNode node;
 
         public BackPropagationTask(int score, MCTSNode node) {
+            if (node == null) throw new IllegalArgumentException("Null node give");
             this.score = score;
             this.node = node;
         }
         @Override
         public Integer call() throws Exception {
-            return null;
+            this.node.backpropagate(score);
+
+            if (node.parent != null)
+                node.cpu.futureBlockingQueue.add(node.cpu.executorService.submit(new BackPropagationTask(score, node.parent)));
+
+            return 0;
         }
     }
 }

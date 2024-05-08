@@ -10,6 +10,7 @@ import aayzhao.pente.game.model.PieceType;
 
 import java.util.ArrayList;
 import java.util.Random;
+import java.util.concurrent.ExecutionException;
 
 /**
  * Full rollout/naive MCTS computer
@@ -81,7 +82,7 @@ public class FullRolloutMCTSComputer implements PenteComputer {
         return null;
     }
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws InterruptedException, ExecutionException {
         System.out.println("Testing");
         PenteComputer cpu = new FullRolloutMCTSComputer();
         Board board = new BoardImpl(9);

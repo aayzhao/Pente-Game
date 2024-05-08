@@ -14,6 +14,7 @@ import aayzhao.pente.game.model.PieceType;
 import aayzhao.pente.game.view.CLIView;
 
 import java.util.Scanner;
+import java.util.concurrent.ExecutionException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -21,9 +22,9 @@ import java.util.regex.Pattern;
  * Naive implementation of MTCS that does successively more rollouts for the better moves
  */
 public class Main {
-    public static boolean player1CPU = true;
+    public static boolean player1CPU = false;
     final static Pattern lastIntPattern = Pattern.compile("[^0-9]+([0-9]+)$");
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws InterruptedException, ExecutionException {
         Model model = new ModelImpl(9);
         CLIView view = new CLIView(model);
         PenteComputer cpu = new MCTSComputer(model.getBoardSize());
