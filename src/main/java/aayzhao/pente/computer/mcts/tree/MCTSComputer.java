@@ -3,20 +3,26 @@ package aayzhao.pente.computer.mcts.tree;
 import aayzhao.pente.computer.Move;
 import aayzhao.pente.computer.MoveImpl;
 import aayzhao.pente.computer.PenteComputer;
+import aayzhao.pente.computer.RandomizedMoveSet;
 import aayzhao.pente.computer.mcts.RandomGame;
-import aayzhao.pente.game.model.*;
+import aayzhao.pente.game.model.Board;
+import aayzhao.pente.game.model.Model;
+import aayzhao.pente.game.model.ModelImpl;
 
-import java.util.*;
+import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class MCTSComputer implements PenteComputer {
-    private MCTSNode root;
+    protected static Random random = new Random();
+    private static boolean DEBUG = true;
+    public static final double C_CONST = Math.sqrt(2.0);
+    MCTSNode root;
     private int size;
     private boolean firstMove;
-
     public MCTSComputer(int size) {
+        this.root = null;
         this.size = size;
-        firstMove = true;
+        this.firstMove = true;
     }
 
     @Override
@@ -24,16 +30,6 @@ public class MCTSComputer implements PenteComputer {
         return 0;
     }
 
-    /**
-     *
-     * @param halfPly           odd indicates white's turn to move, even indicates black
-     * @param board             Board to analyze
-     * @param whiteCaptures     times white has captured
-     * @param blackCaptures     times black has captured
-     * @param oppMove           the previous move played to arrive in this position
-     * @return
-     * @throws InterruptedException
-     */
     @Override
     public Move bestMove(int halfPly, Board board, int whiteCaptures, int blackCaptures, Move oppMove) throws InterruptedException {
         if (root != null) {
@@ -41,354 +37,306 @@ public class MCTSComputer implements PenteComputer {
         }
         if (root == null) {
             // generate root node
-            root = MCTSNode.createNewNode(halfPly, board, whiteCaptures, blackCaptures, oppMove);
-            // generate first layer of nodes
-            generateNodes(root);
-
-            // generate second layer of nodes
-            Thread[] threads = new Thread[root.children.size()];
-            int i = 0;
-            for (MCTSNode child : root.children.values()) {
-                Runnable r = () -> {
-                    try {
-                        generateNodes(child);
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                };
-                Thread t = new Thread(r);
-                threads[i] = t;
-                threads[i].start();
-                i++;
-            }
-            for (Thread t : threads) {
-                t.join();
-            }
+            root = MCTSNode.createNode(board, whiteCaptures, blackCaptures, halfPly);
+            System.out.println(root);
         }
-        root.parent = null; // remove parent reference, to prevent catastrophic backpropagation
-        mcts(); // expand and populate tree
 
-        root = bestNode(root, true); // make the move
-        root.parent = null; // remove tree from parent
-        return this.root.move;
+        root.parent = null; // remove parent node, as that is not under consideration anymore
+
+        // begin searching for at least 3 seconds:
+        long startTime = System.nanoTime();
+        long searchTime = 5000000000L;
+        while (System.nanoTime() - startTime < searchTime) {
+            MCTSNode leaf = traverse(root);
+
+            leaf.rollout();
+        }
+//        for (int i = 0; i < 10; i++) {
+//            System.out.println("Traversal " + (i + 1) + ":");
+//            MCTSNode leaf = traverse(root);
+//            System.out.println("Testing " + leaf.move);
+//            leaf.rollout();
+//        }
+
+        if (DEBUG) System.out.println(root.proportion + " is the old proportion");
+        root = bestNode(root); // move root to the chosen node
+
+        if (root.parent != null && root.parent.parent != null) root.parent.parent = null;
+        return root.move;
     }
 
     @Override
     public Move bestMove(int halfPly, Move prevMove) throws InterruptedException {
-        MCTSNode prev = root;
-        if (root != null) root = root.children.get(prevMove); // move to correct node for opponent move
-        if (root == null) {
-            // generate first layer of nodes
-            if (prevMove == null) {
-                root = MCTSNode.createNewWhiteCPU(size);
+        return null;
+    }
+
+    private MCTSNode bestUCT(MCTSNode node) {
+        // if (node.move == null) return MCTSNode.createNode(node, node.possibleChildren.getRandom());
+        double curUCT = 0.0;
+        MCTSNode curNode = null;
+        if (node.isLeaf()) {
+            curUCT = UCT(node);
+            curNode = node;
+        }
+
+        for (Move move : node.children.keySet()) {
+            if (curNode == null) {
+                curNode = node.children.get(move);
+                curUCT = UCT(curNode);
             } else {
-                root = MCTSNode.createNewBlackCPU(size, prevMove);
-            }
-            generateNodes(root);
-
-            // generate second layer of nodes
-            Thread[] threads = new Thread[root.children.size()];
-            int i = 0;
-            for (MCTSNode child : root.children.values()) {
-                Runnable r = () -> {
-                    try {
-                        generateNodes(child);
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                };
-                Thread t = new Thread(r);
-                threads[i] = t;
-                threads[i].start();
-                i++;
-            }
-            for (Thread t : threads) {
-                t.join();
+                MCTSNode target = node.children.get(move);
+                double targetUCT = UCT(target);
+                if (Double.compare(curUCT, targetUCT) < 0) {
+                    curNode = target;
+                    curUCT = targetUCT;
+                }
             }
         }
 
-        mcts();
-
-        root = bestNode(root);
-        return this.root.move;
-    }
-
-    private void mcts() throws InterruptedException {
-        // selection and queue up the upper 40% of nodes
-        Comparator<MCTSNode> comp;
-        if (this.root.model.getHalfPly() % 2 == 1) comp = (a, b) -> b.rootProp.compareTo(a.rootProp);
-        else comp = Comparator.comparing((a) -> a.rootProp);
-
-        // repeat while processing time allows
-        long startTime = System.nanoTime();
-        long timeForExpansion = 2500000000L;
-        // int j = 0;
-        while (System.nanoTime() - startTime < timeForExpansion) {
-            PriorityQueue<MCTSNode> queue = new PriorityQueue<>(82, comp);
-            queue.addAll(root.children.values());
-
-            int searchThreshold = (int) Math.min(Math.ceil(((double) root.children.size()) * 0.75), 1);
-            Thread[] threads = new Thread[searchThreshold];
-            for (int i = 0; i < searchThreshold; i++) {
-                final MCTSNode[] node = {queue.poll()};
-                Runnable r = () -> {
-                    node[0] = traverse(node[0]);
-                    try {
-                        generateNodes(node[0]);
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                };
-                threads[i] = new Thread(r);
-                threads[i].start();
-                // System.out.printf("Expansion %d Complete\n", j++);
-            }
-            for (Thread t : threads) t.join();
+        if (node == curNode) {
+            return MCTSNode.createNode(node, node.possibleChildren.getRandom());
         }
 
-        startTime = System.nanoTime();
-        timeForExpansion = 2500000000L;
-        while (System.nanoTime() - startTime < timeForExpansion) {
-            PriorityQueue<MCTSNode> queue = new PriorityQueue<>(82, comp);
-            queue.addAll(root.children.values());
-
-            int searchThreshold = (int) Math.min(Math.ceil(((double) root.children.size()) * 0.75), 1);
-            Thread[] threads = new Thread[searchThreshold];
-            for (int i = 0; i < searchThreshold; i++) {
-                final MCTSNode[] node = {queue.poll()};
-                Runnable r = () -> {
-                    node[0] = traverse(node[0]);
-                    try {
-                        generateNodes(node[0]);
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                };
-                threads[i] = new Thread(r);
-                threads[i].start();
-                // System.out.printf("Expansion %d Complete\n", j++);
-            }
-            for (Thread t : threads) t.join();
-        }
-
-        startTime = System.nanoTime();
-        timeForExpansion = 1500000000L;
-        while (System.nanoTime() - startTime < timeForExpansion) {
-            PriorityQueue<MCTSNode> queue = new PriorityQueue<>(82, comp);
-            queue.addAll(root.children.values());
-
-            int searchThreshold = (int) Math.min(Math.ceil(((double) root.children.size()) * 0.375), 1);
-            Thread[] threads = new Thread[searchThreshold];
-            for (int i = 0; i < searchThreshold; i++) {
-                final MCTSNode[] node = {queue.poll()};
-                Runnable r = () -> {
-                    node[0] = traverse(node[0]);
-                    try {
-                        generateNodes(node[0]);
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                };
-                threads[i] = new Thread(r);
-                threads[i].start();
-                // System.out.printf("Expansion %d Complete\n", j++);
-            }
-            for (Thread t : threads) t.join();
-        }
-
-        startTime = System.nanoTime();
-        timeForExpansion = 1500000000L;
-        while (System.nanoTime() - startTime < timeForExpansion) {
-            PriorityQueue<MCTSNode> queue = new PriorityQueue<>(82, comp);
-            queue.addAll(root.children.values());
-
-            int searchThreshold = (int) Math.min(Math.ceil(((double) root.children.size()) * 0.375), 1);
-            Thread[] threads = new Thread[searchThreshold];
-            for (int i = 0; i < searchThreshold; i++) {
-                final MCTSNode[] node = {queue.poll()};
-                Runnable r = () -> {
-                    node[0] = traverse(node[0]);
-                    try {
-                        generateNodes(node[0]);
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                };
-                threads[i] = new Thread(r);
-                threads[i].start();
-                // System.out.printf("Expansion %d Complete\n", j++);
-            }
-            for (Thread t : threads) t.join();
-        }
-    }
-
-    private MCTSNode traverse(MCTSNode node) {
-        while (!node.children.isEmpty()) {
-            node = bestNode(node);
-            // System.out.println("Node " + node.move);
-        }
-
-        return node;
+        return curNode;
     }
 
     private MCTSNode bestNode(MCTSNode node) {
-        MCTSNode next = null;
-        // System.out.println(root.model.getHalfPly() + " is the half ply");
-        for (Move key : node.children.keySet()) {
-            if (next == null) next = node.children.get(key);
-            else {
-                MCTSNode target = node.children.get(key);
-                // System.out.println(target.rootProp + "\t\t" + target.move);
-                if (node.model.getHalfPly() % 2 == 1 && target.rootProp.compareTo(next.rootProp) > 0) next = target;
-                else if (node.model.getHalfPly() % 2 == 0 && target.rootProp.compareTo(next.rootProp) < 0) next = target;
-            }
-        }
-        // System.out.println(next.rootProp + "\t\t" + next.move);
-        return next;
-    }
-
-    private MCTSNode bestNode(MCTSNode node, boolean DEBUG) {
         MCTSNode next = null;
         if (DEBUG) System.out.println(root.model.getHalfPly() + " is the half ply");
         for (Move key : node.children.keySet()) {
             if (next == null) next = node.children.get(key);
             else {
                 MCTSNode target = node.children.get(key);
-                if (DEBUG) System.out.println(target.rootProp + "\t\t" + target.move);
-                if (node.model.getHalfPly() % 2 == 1 && target.rootProp.compareTo(next.rootProp) > 0) next = target;
-                else if (node.model.getHalfPly() % 2 == 0 && target.rootProp.compareTo(next.rootProp) < 0) next = target;
-            }
-        }
-        if (DEBUG) System.out.printf("%.2f\t\t%s\n",((double)(next.rootProp.numerator + next.rootProp.denominator)) / (2.0 * (double) next.rootProp.denominator), next.move);
-        return next;
-    }
-
-    private void generateNodes(MCTSNode node) throws InterruptedException {
-        int size  = node.model.getBoardSize();
-        for (int i = 0; i < size; i++) {
-            for (int j = 0; j < size; j++) {
-                if (node.model.isValidMove(i, j)) {
-                    node.addNode(new MoveImpl(i, j));
+                if (DEBUG) System.out.println(target.proportion + "\t\t" + target.move);
+                if (target.proportion.denominator > next.proportion.denominator) next = target;
+                else if (target.proportion.denominator == next.proportion.denominator) {
+                    if (target.proportion.numerator > next.proportion.numerator) next = target;
                 }
             }
         }
-        Thread[] threads = new Thread[node.children.size()];
-        int i = 0;
-        for (MCTSNode child : node.children.values()) {
-            Runnable r = child::rollout;
-            threads[i] =  new Thread(r);
-            threads[i].start();
-            i++;
-        }
 
-        for (Thread t : threads) {
-            t.join();
-        }
+        if (DEBUG) System.out.printf("%.2f\t\t%s\n",
+                ((double)(next.proportion.numerator + next.proportion.denominator)) /
+                        (2.0 * (double) next.proportion.denominator),
+                next.move);
+
+        return next;
+    }
+
+    private double UCT(MCTSNode node) {
+        // wi / ni + C_CONST sqrt(ln(Ni) / ni)
+        double wi = node.proportion.numerator;
+        double ni = node.proportion.denominator;
+        double Ni = node.parent != null ? node.parent.proportion.denominator : 0;
+        return (wi / ni) + C_CONST * (Math.sqrt(Math.log(Ni) / ni));
+    }
+
+    private MCTSNode traverse(MCTSNode node) {
+        // System.out.println(!node.children.isEmpty() || node.move == null || node.possibleChildren.getIndex() == 0);
+        while (!node.children.isEmpty() || node.move == null || node.possibleChildren.getIndex() == 0) node = bestUCT(node);
+        return node;
     }
 
     @Override
     public String toString() {
-        return "MCTSv1.9";
+        return "MCTSv2.0";
     }
 }
 
 class MCTSNode {
+    /**
+     * default game size for nodes in this tree
+     */
+    public static int DEFAULT_GAME_SIZE = 9;
+    /**
+     * Parent MCTS Node
+     */
     public MCTSNode parent;
-    public Map<Move, MCTSNode> children;
-    public Proportion rootProp;
+    /**
+     * Hashmap of possible moves in the position, and the corresponding child nodes.
+     */
+    public ConcurrentHashMap<Move, MCTSNode> children;
+    /**
+     * the proportion of wins for the player making the move this node is associated with vs. rollouts done
+     */
+    public Proportion proportion;
+    /**
+     * The move the player is making
+     */
     public Move move;
+    /**
+     * The game state BEFORE the move stored by this node has been made
+     * A halfPly % 2 == 1 for the model indicates that WHITE is making the move this node is
+     * associated with, and that proportion is the proportion of WHITE wins.
+     */
     public Model model;
+    /**
+     * A randomized set that guarantees O(1) insert, delete, and get random.
+     */
+    public RandomizedMoveSet possibleChildren;
 
-    public static MCTSNode createNewWhiteCPU(int size) {
-        return new MCTSNode(size);
+    /**
+     * Factory method for creating new MCTSNodes. If not null, this method
+     * will automatically create a new node with the parent's move made. Otherwise,
+     * a node representing a new, default game will be created.
+     * @param parent    Can be null. Previous node
+     * @param move      Move to be associated with this node
+     * @return          Pointer to the newly created node
+     */
+    public static MCTSNode createNode(MCTSNode parent, Move move) {
+        Model model;
+        if (parent != null) {
+            MCTSNode newNode = new MCTSNode(
+                    move,
+                    parent.model.getBoard(),
+                    parent.model.getWhitePlayerCaptures(),
+                    parent.model.getBlackPlayerCaptures(),
+                    parent.model.getHalfPly()
+            );
+
+            if (parent.move != null) {
+                if (!newNode.model.isValidMove(parent.move.getRowCoord(), parent.move.getColumnCoord()))
+                    throw new IllegalArgumentException("Parent move does not exist for board");
+                newNode.model.move( // make the move of the parent
+                        parent.move.getRowCoord(),
+                        parent.move.getColumnCoord()
+                );
+            }
+            parent.addNode(newNode);
+            newNode.addLeafsToSet();
+            return newNode;
+        } else {
+            model = new ModelImpl(DEFAULT_GAME_SIZE);
+            MCTSNode newNode = new MCTSNode();
+            newNode.model = model;
+            newNode.move = move;
+            newNode.addLeafsToSet();
+            return newNode;
+        }
     }
 
-    public static MCTSNode createNewBlackCPU(int size, Move whiteMove) {
-        return new MCTSNode(size, whiteMove);
+    /**
+     * Creates a new node, and assumes that the board is the state AFTER the opponent's previous move.
+     * The board passed in must be a copy of the actual board, as the node assumes that it will
+     * be the only process to modify this board after it is passed in.
+     * @param board         Current board state
+     * @param whiteCaptures Current white captures
+     * @param blackCaptures Current black captures
+     * @param halfPly       Halfply for the game
+     * @return              A new node
+     */
+    public static MCTSNode createNode(Board board, int whiteCaptures, int blackCaptures, int halfPly) {
+        MCTSNode newNode = new MCTSNode();
+        newNode.model = new ModelImpl(board, whiteCaptures, blackCaptures, halfPly);
+        newNode.addLeafsToSet();
+        return newNode;
     }
-    public static MCTSNode createNewNode(int halfPly, Board board, int whiteCaptures, int blackCaptures, Move oppMove) {
-        MCTSNode res = new MCTSNode();
-        res.rootProp = new Proportion();
-        res.move = oppMove;
-        res.model = new ModelImpl(board.copy(), whiteCaptures, blackCaptures, halfPly);
-        res.parent = null;
-        return res;
-    }
+
+    /**
+     * Default constructor and creates a node with most fields null
+     */
     private MCTSNode() {
-        children = new ConcurrentHashMap<>();
-    }
-    private MCTSNode(int size) { // CPU game as white
-        parent = null;
-        children = new ConcurrentHashMap<>();
-        rootProp = new Proportion();
-        move = null;
-        model = new ModelImpl(size);
+        this.move = null;
+        this.model = null;
+        this.proportion = new Proportion();
+        this.children = new ConcurrentHashMap<>();
+        this.parent = null;
+        this.possibleChildren = new RandomizedMoveSet(DEFAULT_GAME_SIZE, MCTSComputer.random);
     }
 
-    private MCTSNode(int size, Move oppMove) { // CPU game as black
-        parent = null;
-        children = new ConcurrentHashMap<>();
-        rootProp = new Proportion();
-        move = oppMove;
-        model = new ModelImpl(size);
-        model.move(oppMove.getRowCoord(), oppMove.getColumnCoord());
+    /**
+     * Creates a parentless node for the given move and game state. NOTE: move and board will
+     * be used internally and the node expects that it will be the only process modifying
+     * the input board after its creation.
+     * @param move          The move to make
+     * @param board         The current board state, before the move has been played
+     * @param whiteCaptures The current white player's captures
+     * @param blackCaptures The current black player's captures
+     * @param halfPly       The halfply before the move is being made. Indicates white (odd) or black (even) to play
+     */
+    private MCTSNode(Move move, Board board, int whiteCaptures, int blackCaptures, int halfPly) {
+        this.move = move;
+        this.model = new ModelImpl(board, whiteCaptures, blackCaptures, halfPly);
+        this.proportion = new Proportion();
+        this.children = new ConcurrentHashMap<>();
+        this.parent = null;
+        this.possibleChildren = new RandomizedMoveSet(board.getSize(), MCTSComputer.random);
     }
 
-    public void addNode(Move move) {
-        MCTSNode child = new MCTSNode();
+    /**
+     * Adds the specified node to this node's list of children. Also updates the
+     * new child's parent pointer to this node
+     * @param child     Node to be added
+     */
+    private void addNode(MCTSNode child) {
+        this.children.put(child.move, child);
+        this.possibleChildren.remove(child.move);
         child.parent = this;
-        child.move = move;
-        child.model = new ModelImpl(
-                this.model.getBoard().copy(),
+    }
+
+    /**
+     * Adds all possible moves to the randomized move set
+     */
+    private void addLeafsToSet() {
+        Model temp = new ModelImpl(
+                this.model.getBoard(),
                 this.model.getWhitePlayerCaptures(),
                 this.model.getBlackPlayerCaptures(),
                 this.model.getHalfPly()
         );
-        child.model.move(move.getRowCoord(), move.getColumnCoord());
-        child.rootProp = new Proportion();
-        this.children.put(move, child);
+        if (this.move != null) temp.move(this.move.getRowCoord(), this.move.getColumnCoord());
+
+        // note possible leafs from this node
+        for (int i = 0; i < this.model.getBoardSize(); i++) {
+            for (int j = 0; j < this.model.getBoardSize(); j++) {
+                if (temp.isValidMove(i, j)) {
+                    this.possibleChildren.insert(new MoveImpl(i, j));
+                }
+            }
+        }
     }
 
+    public boolean isLeaf() {
+        return this.possibleChildren.getIndex() != 0;
+    }
+
+    /**
+     * Performs a rollout for this node and the move this node is associated with.
+     * If the rollout results in a win for white (positive score), and this node is
+     * representing a position for white to play (this.model.getHalfPly() is odd), then the node's numerator
+     * is incremented.
+     * Vice versa for black.
+     */
     public void rollout() {
+        if (this.move == null) throw new IllegalStateException("Null move for + " + this);
+        // if (this.proportion.denominator > 0)
+        //    throw new IllegalStateException("Cannot do a rollout on already simulated node");
         RandomGame game = new RandomGame(
                 this.model.getHalfPly(),
                 this.model.getBoard(),
                 this.model.getWhitePlayerCaptures(),
                 this.model.getBlackPlayerCaptures(),
                 this.move,
-                10
+                1
         );
         game.run();
-        this.rootProp.denominator += 10;
-        this.rootProp.numerator += game.score;
-        backpropagate();
+
+        this.backpropagate(game.score);
     }
 
     /**
-     * thread safe update during backpropagation
-     * @param delta
+     * Takes in a game score which is either a 1 (win for white) or -1 (win for black).
+     * If the node represents white to move (halfPly % 2 == 1), then its numerator is incremented
+     * as well as the denominator, else only denominator is incremented.
+     * @param score     Result of the rollout game.
      */
-    public synchronized void updateProp(Proportion delta) {
-        this.rootProp.numerator += delta.numerator;
-        this.rootProp.denominator += delta.denominator;
-        if (parent != null) parent.updateProp(delta);
+    private synchronized void backpropagate(int score) {
+        // if (move == null) System.out.println("Updating parent proportions");
+        if (score != 1 && score != -1) throw new IllegalArgumentException("Invalid score for a rollout");
+        this.proportion.denominator += 1;
+        if (this.model.getHalfPly() % 2 == 1 && score > 0) this.proportion.numerator += 1;
+        else if (this.model.getHalfPly() % 2 == 0 && score < 0) this.proportion.numerator += 1;
+        if (parent != null) parent.backpropagate(score);
+        // if (move == null) System.out.println(proportion);
     }
-
-    /**
-     * Start backpropagating the delta in values up the node tree
-     */
-    public void backpropagate() {
-        parent.updateProp(this.rootProp);
-    }
-
-    public int getDepth() {
-        if (this.children.isEmpty()) return 1;
-        else return this.children.values().iterator().next().getDepth() + 1;
-    }
-
-    public Proportion getRootProp() {
-        return this.rootProp;
-    }
-
 }
-

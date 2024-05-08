@@ -7,6 +7,7 @@ import aayzhao.pente.computer.mcts.naive.FastMCTSComputer;
 import aayzhao.pente.computer.mcts.naive.FullRolloutMCTSComputer;
 import aayzhao.pente.computer.mcts.naive.StagedMCTSComputer;
 import aayzhao.pente.computer.mcts.tree.MCTSComputer;
+import aayzhao.pente.computer.mcts.tree.MCTSComputerDeprecated;
 import aayzhao.pente.game.model.Model;
 import aayzhao.pente.game.model.ModelImpl;
 import aayzhao.pente.game.model.PieceType;
@@ -26,6 +27,7 @@ public class Main {
         Model model = new ModelImpl(9);
         CLIView view = new CLIView(model);
         PenteComputer cpu = new MCTSComputer(model.getBoardSize());
+        PenteComputer cpu19 = new MCTSComputerDeprecated(model.getBoardSize());
         PenteComputer cpu14 = new StagedMCTSComputer();
         PenteComputer cpu11 = new FullRolloutMCTSComputer();
         PenteComputer cpu05 = new FastMCTSComputer();

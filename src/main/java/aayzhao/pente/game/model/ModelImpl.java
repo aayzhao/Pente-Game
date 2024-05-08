@@ -184,6 +184,10 @@ public class ModelImpl implements Model {
         update();
     }
 
+    /**
+     * Returns a deep copy of the underlying board that backs this model
+     * @return      Deep copy of board
+     */
     @Override
     public Board getBoard() {
         return this.board.copy();

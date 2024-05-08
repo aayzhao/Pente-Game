@@ -21,8 +21,9 @@ public interface Model {
     PieceType getCurrentPlayerTurn(int halfPly);
 
     /**
-     *
-     * @return
+     * The current half ply of the game. An empty board for a new game has
+     * a half ply of 1, indicating White's turn to move.
+     * @return  the current half ply
      */
     int getHalfPly();
 
